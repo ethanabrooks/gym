@@ -31,6 +31,13 @@ class MujocoEnv(gym.Env):
         self.model = mujoco_py.load_model_from_path(fullpath)
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
+
+        current_time = self.sim.data.time
+        self.sim.step()
+        next_time = self.sim.data.time
+        self._dt = next_time - current_time
+        self.sim.reset()
+
         self.viewer = None
 
         self.metadata = {
@@ -38,8 +45,8 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        self.init_qpos = self.model.data.qpos.ravel().copy()
-        self.init_qvel = self.model.data.qvel.ravel().copy()
+        self.init_qpos = self.sim.data.qpos.ravel().copy()
+        self.init_qvel = self.sim.data.qvel.ravel().copy()
         observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
         assert not done
         self.obs_dim = observation.size
@@ -91,8 +98,9 @@ class MujocoEnv(gym.Env):
         assert qpos.shape == (self.model.nq,) \
                 and qvel.shape == (self.model.nv,)
         current = self.sim.get_state()
-        self.sim.set_state(current.time, qpos, qvel, current.act,
-                           current.udd_state)
+        new_state = mujoco_py.MjSimState(current.time, qpos, qvel,
+                                         current.act, current.udd_state)
+        self.sim.set_state(new_state)
 
         # TODO: what are these all about?
         # self.model._compute_subtree()  # pylint: disable=W0212
@@ -100,17 +108,17 @@ class MujocoEnv(gym.Env):
 
     @property
     def dt(self):
-        return self.sim.time * self.frame_skip
+        return self._dt * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.sim.data.ctrl = ctrl
+        self.sim.data.ctrl[:] = ctrl
         for _ in range(n_frames):
             self.sim.step()
 
     def _render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:
-                self._get_viewer().finish()
+                self._get_viewer()  # .finish()
                 self.viewer = None
             return
 
@@ -120,7 +128,7 @@ class MujocoEnv(gym.Env):
             return np.fromstring(data, dtype='uint8')\
                 .reshape(height, width, 3)[::-1, :, :]
         elif mode == 'human':
-            self._get_viewer().loop_once()
+            self._get_viewer().render()
 
     def _get_viewer(self):
         if self.viewer is None:
