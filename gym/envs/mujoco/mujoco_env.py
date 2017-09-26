@@ -5,13 +5,15 @@ from gym.utils import seeding
 import numpy as np
 from os import path
 import gym
-import six
+# import six
 
 try:
     import mujoco_py
-    from mujoco_py.mjlib import mjlib
 except ImportError as e:
-    raise error.DependencyNotInstalled("{}. (HINT: you need to install mujoco_py, and also perform the setup instructions here: https://github.com/openai/mujoco-py/.)".format(e))
+    raise error.DependencyNotInstalled("{}. (HINT: you need to install \
+            mujoco_py, and also perform the setup instructions here: \
+            https://github.com/openai/mujoco-py/.)".format(e))
+
 
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
@@ -21,12 +23,14 @@ class MujocoEnv(gym.Env):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
-            fullpath = os.path.join(os.path.dirname(__file__), "assets", model_path)
+            fullpath = os.path.join(os.path.dirname(__file__),
+                                    "assets", model_path)
         if not path.exists(fullpath):
             raise IOError("File %s does not exist" % fullpath)
         self.frame_skip = frame_skip
-        self.model = mujoco_py.MjModel(fullpath)
-        self.data = self.model.data
+        self.model = mujoco_py.load_model_from_path(fullpath)
+        self.sim = mujoco_py.MjSim(self.model)
+        self.data = self.sim.data
         self.viewer = None
 
         self.metadata = {
@@ -67,16 +71,16 @@ class MujocoEnv(gym.Env):
 
     def viewer_setup(self):
         """
-        This method is called when the viewer is initialized and after every reset
-        Optionally implement this method, if you need to tinker with camera position
-        and so forth.
+        This method is called when the viewer is initialized and after every
+        reset Optionally implement this method, if you need to tinker with
+        camera position and so forth.
         """
         pass
 
     # -----------------------------
 
     def _reset(self):
-        mjlib.mj_resetData(self.model.ptr, self.data.ptr)
+        self.sim.reset()
         ob = self.reset_model()
         if self.viewer is not None:
             self.viewer.autoscale()
@@ -84,20 +88,24 @@ class MujocoEnv(gym.Env):
         return ob
 
     def set_state(self, qpos, qvel):
-        assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
-        self.model.data.qpos = qpos
-        self.model.data.qvel = qvel
-        self.model._compute_subtree()  # pylint: disable=W0212
-        self.model.forward()
+        assert qpos.shape == (self.model.nq,) \
+                and qvel.shape == (self.model.nv,)
+        current = self.sim.get_state()
+        self.sim.set_state(current.time, qpos, qvel, current.act,
+                           current.udd_state)
+
+        # TODO: what are these all about?
+        # self.model._compute_subtree()  # pylint: disable=W0212
+        # self.model.forward()
 
     @property
     def dt(self):
-        return self.model.opt.timestep * self.frame_skip
+        return self.sim.time * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.model.data.ctrl = ctrl
+        self.sim.data.ctrl = ctrl
         for _ in range(n_frames):
-            self.model.step()
+            self.sim.step()
 
     def _render(self, mode='human', close=False):
         if close:
@@ -109,32 +117,19 @@ class MujocoEnv(gym.Env):
         if mode == 'rgb_array':
             self._get_viewer().render()
             data, width, height = self._get_viewer().get_image()
-            return np.fromstring(data, dtype='uint8').reshape(height, width, 3)[::-1, :, :]
+            return np.fromstring(data, dtype='uint8')\
+                .reshape(height, width, 3)[::-1, :, :]
         elif mode == 'human':
             self._get_viewer().loop_once()
 
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer()
-            self.viewer.start()
-            self.viewer.set_model(self.model)
+            self.viewer = mujoco_py.MjViewer(self.sim)
             self.viewer_setup()
         return self.viewer
 
-    def get_body_com(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
-        return self.model.data.com_subtree[idx]
-
-    def get_body_comvel(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
-        return self.model.body_comvels[idx]
-
-    def get_body_xmat(self, body_name):
-        idx = self.model.body_names.index(six.b(body_name))
-        return self.model.data.xmat[idx].reshape((3, 3))
-
     def state_vector(self):
         return np.concatenate([
-            self.model.data.qpos.flat,
-            self.model.data.qvel.flat
+            self.sim.data.qpos.flat,
+            self.sim.data.qvel.flat
         ])
