@@ -127,10 +127,27 @@ class MujocoEnv(gym.Env):
             return
 
         if mode == 'rgb_array':
-            # TODO: This sucks
-            return self.sim.render(DEFAULT_HEIGHT, DEFAULT_WIDTH)
+            raise RuntimeError('Use `_render_array`')
         elif mode == 'human':
             self._get_viewer().render()
+
+    def _render_array(self, *args, **kwargs):
+        """
+        Renders view from a camera and returns image as an `numpy.ndarray`.
+        Args:
+        - width (int): desired image width.
+        - height (int): desired image height.
+        - camera_name (str): name of camera in model. If None, the free
+            camera will be used.
+        - depth (bool): if True, also return depth buffer
+        - device (int): device to use for rendering (only for GPU-backed
+            rendering).
+        Returns:
+        - rgb (uint8 array): image buffer from camera
+        - depth (float array): depth buffer from camera (only returned
+            if depth=True)
+        """
+        return self.sim.render(*args, **kwargs)
 
     def _get_viewer(self):
         if self.viewer is None:
