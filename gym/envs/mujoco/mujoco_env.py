@@ -14,6 +14,9 @@ except ImportError as e:
             mujoco_py, and also perform the setup instructions here: \
             https://github.com/openai/mujoco-py/.)".format(e))
 
+DEFAULT_WIDTH = 255
+DEFAULT_HEIGHT = 255
+
 
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
@@ -32,6 +35,7 @@ class MujocoEnv(gym.Env):
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
 
+        # TODO: This sucks
         current_time = self.sim.data.time
         self.sim.step()
         next_time = self.sim.data.time
@@ -123,10 +127,8 @@ class MujocoEnv(gym.Env):
             return
 
         if mode == 'rgb_array':
-            self._get_viewer().render()
-            data, width, height = self._get_viewer().get_image()
-            return np.fromstring(data, dtype='uint8')\
-                .reshape(height, width, 3)[::-1, :, :]
+            # TODO: This sucks
+            return self.sim.render(DEFAULT_HEIGHT, DEFAULT_WIDTH)
         elif mode == 'human':
             self._get_viewer().render()
 
