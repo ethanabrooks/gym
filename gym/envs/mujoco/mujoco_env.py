@@ -35,13 +35,6 @@ class MujocoEnv(gym.Env):
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
 
-        # TODO: This sucks
-        current_time = self.sim.data.time
-        self.sim.step()
-        next_time = self.sim.data.time
-        self._dt = next_time - current_time
-        self.sim.reset()
-
         self.viewer = None
 
         self.metadata = {
@@ -112,7 +105,7 @@ class MujocoEnv(gym.Env):
 
     @property
     def dt(self):
-        return self._dt * self.frame_skip
+        return self.model.opt.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
         self.sim.data.ctrl[:] = ctrl
