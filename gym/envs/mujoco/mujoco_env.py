@@ -84,10 +84,11 @@ class MujocoEnv(gym.Env):
     # -----------------------------
 
     def _reset(self):
+        print('mujoco_env._reset()')
         self.sim.reset()
         ob = self.reset_model()
         if self.viewer is not None:
-            self.viewer.autoscale()
+            # self.viewer.autoscale()
             self.viewer_setup()
         return ob
 
