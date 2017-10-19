@@ -22,7 +22,8 @@ class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip):
+    def __init__(self, model_path, frame_skip,
+                 action_space=None, observation_space=None):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -34,7 +35,6 @@ class MujocoEnv(gym.Env):
         self.model = mujoco_py.load_model_from_path(fullpath)
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
-
         self.viewer = None
 
         self.metadata = {
@@ -44,18 +44,25 @@ class MujocoEnv(gym.Env):
 
         self.init_qpos = self.sim.data.qpos.ravel().copy()
         self.init_qvel = self.sim.data.qvel.ravel().copy()
-        observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
-        assert not done
-        self.obs_dim = observation.size
 
-        bounds = self.model.actuator_ctrlrange.copy()
-        low = bounds[:, 0]
-        high = bounds[:, 1]
-        self.action_space = spaces.Box(low, high)
+        if action_space is None:
+            bounds = self.model.actuator_ctrlrange.copy()
+            low = bounds[:, 0]
+            high = bounds[:, 1]
+            self.action_space = spaces.Box(low, high)
+        else:
+            self.action_space = action_space
 
-        high = np.inf*np.ones(self.obs_dim)
-        low = -high
-        self.observation_space = spaces.Box(low, high)
+        if observation_space is None:
+            action = self.action_space.sample()
+            observation, _reward, done, _info = self._step(action)
+            assert not done
+            self.obs_dim = observation.size
+            high = np.inf * np.ones(self.obs_dim)
+            low = -high
+            self.observation_space = spaces.Box(low, high)
+        else:
+            self.observation_space = observation_space
 
         self._seed()
 
@@ -84,7 +91,6 @@ class MujocoEnv(gym.Env):
     # -----------------------------
 
     def _reset(self):
-        print('mujoco_env._reset()')
         self.sim.reset()
         ob = self.reset_model()
         if self.viewer is not None:
@@ -94,7 +100,7 @@ class MujocoEnv(gym.Env):
 
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.model.nq,) \
-                and qvel.shape == (self.model.nv,)
+            and qvel.shape == (self.model.nv,)
         current = self.sim.get_state()
         new_state = mujoco_py.MjSimState(current.time, qpos, qvel,
                                          current.act, current.udd_state)
@@ -113,7 +119,7 @@ class MujocoEnv(gym.Env):
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, mode='human', close=False):
+    def _render(self, mode='human', camera_name=None, close=False):
         if close:
             if self.viewer is not None:
                 self._get_viewer()  # .finish()
@@ -123,7 +129,11 @@ class MujocoEnv(gym.Env):
         if mode == 'rgb_array':
             raise RuntimeError('Use `_render_array`')
         elif mode == 'human':
-            self._get_viewer().render()
+            if camera_name is None:
+                camera_id = -1
+            else:
+                camera_id = self.model.camera_name2id(camera_name)
+            self._get_viewer().render(camera_id=camera_id)
 
     def _render_array(self, *args, **kwargs):
         """
