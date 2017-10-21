@@ -23,7 +23,7 @@ class MujocoEnv(gym.Env):
     """
 
     def __init__(self, model_path, frame_skip,
-                 action_space=None, observation_space=None):
+                 action_space=None, observation_space=None, offscreen=False):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -36,6 +36,7 @@ class MujocoEnv(gym.Env):
         self.sim = mujoco_py.MjSim(self.model)
         self.data = self.sim.data
         self.viewer = None
+        self.offscreen = offscreen
 
         self.metadata = {
             'render.modes': ['human', 'rgb_array'],
@@ -94,7 +95,6 @@ class MujocoEnv(gym.Env):
         self.sim.reset()
         ob = self.reset_model()
         if self.viewer is not None:
-            # self.viewer.autoscale()
             self.viewer_setup()
         return ob
 
@@ -155,7 +155,7 @@ class MujocoEnv(gym.Env):
 
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim)
+            self.viewer = mujoco_py.MjViewer(self.sim, self.offscreen)
             self.viewer_setup()
         return self.viewer
 
