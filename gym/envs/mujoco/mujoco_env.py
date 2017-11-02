@@ -119,7 +119,7 @@ class MujocoEnv(gym.Env):
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, mode='human', camera_name=None, close=False):
+    def _render(self, mode='human', height=None, width=None, camera_name=None, close=False):
         if close:
             if self.viewer is not None:
                 self._get_viewer()  # .finish()
@@ -127,35 +127,18 @@ class MujocoEnv(gym.Env):
             return
 
         if mode == 'rgb_array':
-            raise RuntimeError('Use `_render_array`')
+            assert None not in [height, width], 'You must specify dimensions \ 
+                    for "rgb_array" mode'
+            # raise RuntimeError('Use `_render_array`')
+            return self.sim.render(height, width, camera_name=camera_name)
         elif mode == 'human':
-            if camera_name is None:
-                camera_id = -1
-            else:
-                camera_id = self.model.camera_name2id(camera_name)
-            self._get_viewer().render(camera_id=camera_id)
-
-    def _render_array(self, *args, **kwargs):
-        """
-        Renders view from a camera and returns image as an `numpy.ndarray`.
-        Args:
-        - width (int): desired image width.
-        - height (int): desired image height.
-        - camera_name (str): name of camera in model. If None, the free
-            camera will be used.
-        - depth (bool): if True, also return depth buffer
-        - device (int): device to use for rendering (only for GPU-backed
-            rendering).
-        Returns:
-        - rgb (uint8 array): image buffer from camera
-        - depth (float array): depth buffer from camera (only returned
-            if depth=True)
-        """
-        return self.sim.render(*args, **kwargs)
+            assert height is width is None, 'dimensions are set based on \
+                    window size in "human" mode'
+            self._get_viewer().render()
 
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim, self.offscreen)
+            self.viewer = mujoco_py.MjViewer(self.sim)
             self.viewer_setup()
         return self.viewer
 
