@@ -119,7 +119,7 @@ class MujocoEnv(gym.Env):
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, mode='human', height=None, width=None, camera_name=None, close=False):
+    def _render(self, mode='human', close=False):
         if close:
             if self.viewer is not None:
                 self._get_viewer()  # .finish()
@@ -127,13 +127,8 @@ class MujocoEnv(gym.Env):
             return
 
         if mode == 'rgb_array':
-            assert None not in [height, width], 'You must specify dimensions \ 
-                    for "rgb_array" mode'
-            # raise RuntimeError('Use `_render_array`')
-            return self.sim.render(height, width, camera_name=camera_name)
+            raise RuntimeError('Use `sim.render`')
         elif mode == 'human':
-            assert height is width is None, 'dimensions are set based on \
-                    window size in "human" mode'
             self._get_viewer().render()
 
     def _get_viewer(self):
