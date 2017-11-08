@@ -10,12 +10,12 @@ class ThrowerEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, 'thrower.xml', 5)
 
     def _step(self, a):
-        ball_xy = self.get_body_com("ball")[:2]
-        goal_xy = self.get_body_com("goal")[:2]
+        ball_xy = self.data.get_body_xpos("ball")[:2]
+        goal_xy = self.data.get_body_xpos("goal")[:2]
 
-        if not self._ball_hit_ground and self.get_body_com("ball")[2] < -0.25:
+        if not self._ball_hit_ground and self.data.get_body_xpos("ball")[2] < -0.25:
             self._ball_hit_ground = True
-            self._ball_hit_location = self.get_body_com("ball")
+            self._ball_hit_location = self.data.get_body_xpos("ball")
 
         if self._ball_hit_ground:
             ball_hit_xy = self._ball_hit_location[:2]
@@ -52,9 +52,9 @@ class ThrowerEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def _get_obs(self):
         return np.concatenate([
-            self.model.data.qpos.flat[:7],
-            self.model.data.qvel.flat[:7],
-            self.get_body_com("r_wrist_roll_link"),
-            self.get_body_com("ball"),
-            self.get_body_com("goal"),
+            self.data.qpos.flat[:7],
+            self.data.qvel.flat[:7],
+            self.data.get_body_xpos("r_wrist_roll_link"),
+            self.data.get_body_xpos("ball"),
+            self.data.get_body_xpos("goal"),
         ])

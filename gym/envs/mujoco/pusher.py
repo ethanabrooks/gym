@@ -10,8 +10,8 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, 'pusher.xml', 5)
 
     def _step(self, a):
-        vec_1 = self.get_body_com("object") - self.get_body_com("tips_arm")
-        vec_2 = self.get_body_com("object") - self.get_body_com("goal")
+        vec_1 = self.data.get_body_xpos("object") - self.data.get_body_xpos("tips_arm")
+        vec_2 = self.data.get_body_xpos("object") - self.data.get_body_xpos("goal")
 
         reward_near = - np.linalg.norm(vec_1)
         reward_dist = - np.linalg.norm(vec_2)
@@ -49,9 +49,9 @@ class PusherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def _get_obs(self):
         return np.concatenate([
-            self.model.data.qpos.flat[:7],
-            self.model.data.qvel.flat[:7],
-            self.get_body_com("tips_arm"),
-            self.get_body_com("object"),
-            self.get_body_com("goal"),
+            self.data.qpos.flat[:7],
+            self.data.qvel.flat[:7],
+            self.data.get_body_xpos("tips_arm"),
+            self.data.get_body_xpos("object"),
+            self.data.get_body_xpos("goal"),
         ])

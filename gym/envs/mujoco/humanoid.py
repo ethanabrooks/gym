@@ -3,9 +3,9 @@ from gym.envs.mujoco import mujoco_env
 from gym import utils
 
 def mass_center(model, data):
-    mass = model.body_mass
+    mass = np.expand_dims(model.body_mass, 1)
     xpos = data.xipos
-    return (np.sum(mass * xpos, 0) / np.sum(mass))[0]
+    return (np.sum(mass * xpos, 0) / np.sum(model.body_mass))[0]
 
 class HumanoidEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     def __init__(self):

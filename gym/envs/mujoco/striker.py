@@ -11,16 +11,16 @@ class StrikerEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         mujoco_env.MujocoEnv.__init__(self, 'striker.xml', 5)
 
     def _step(self, a):
-        vec_1 = self.get_body_com("object") - self.get_body_com("tips_arm")
-        vec_2 = self.get_body_com("object") - self.get_body_com("goal")
+        vec_1 = self.data.get_body_xpos("object") - self.data.get_body_xpos("tips_arm")
+        vec_2 = self.data.get_body_xpos("object") - self.data.get_body_xpos("goal")
         self._min_strike_dist = min(self._min_strike_dist, np.linalg.norm(vec_2))
 
         if np.linalg.norm(vec_1) < self.strike_threshold:
             self._striked = True
-            self._strike_pos = self.get_body_com("tips_arm")
+            self._strike_pos = self.data.get_body_xpos("tips_arm")
 
         if self._striked:
-            vec_3 = self.get_body_com("object") - self._strike_pos
+            vec_3 = self.data.get_body_xpos("object") - self._strike_pos
             reward_near = - np.linalg.norm(vec_3)
         else:
             reward_near = - np.linalg.norm(vec_1)
@@ -67,9 +67,9 @@ class StrikerEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def _get_obs(self):
         return np.concatenate([
-            self.model.data.qpos.flat[:7],
-            self.model.data.qvel.flat[:7],
-            self.get_body_com("tips_arm"),
-            self.get_body_com("object"),
-            self.get_body_com("goal"),
+            self.data.qpos.flat[:7],
+            self.data.qvel.flat[:7],
+            self.data.get_body_xpos("tips_arm"),
+            self.data.get_body_xpos("object"),
+            self.data.get_body_xpos("goal"),
         ])
