@@ -133,7 +133,7 @@ class MujocoEnv(gym.Env):
 
     def _get_viewer(self):
         if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim, offscreen=self.offscreen)
+            self.viewer = mujoco_py.MjViewer(self.sim)
             self.viewer_setup()
         return self.viewer
 
