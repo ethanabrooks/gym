@@ -16,7 +16,8 @@ class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip):
+    def __init__(self, model_path, frame_skip, action_space=None,
+            observation_space=None):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -34,20 +35,27 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        self.init_qpos = self.sim.data.qpos.ravel().copy()
-        self.init_qvel = self.sim.data.qvel.ravel().copy()
-        observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
-        assert not done
-        self.obs_dim = observation.size
+        if action_space is None:
+            bounds = self.model.actuator_ctrlrange.copy()
+            low = bounds[:, 0]
+            high = bounds[:, 1]
+            self.action_space = spaces.Box(low, high)
+        else:
+            self.action_space = action_space
 
-        bounds = self.model.actuator_ctrlrange.copy()
-        low = bounds[:, 0]
-        high = bounds[:, 1]
-        self.action_space = spaces.Box(low, high)
+        if observation_space is None:
+            self.init_qpos = self.sim.data.qpos.ravel().copy()
+            self.init_qvel = self.sim.data.qvel.ravel().copy()
+            observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
+            assert not done
+            self.obs_dim = observation.size
 
-        high = np.inf*np.ones(self.obs_dim)
-        low = -high
-        self.observation_space = spaces.Box(low, high)
+            high = np.inf*np.ones(self.obs_dim)
+            low = -high
+            self.observation_space = spaces.Box(low, high)
+        else:
+            self.observation_space = observation_space
+            
 
         self._seed()
 
