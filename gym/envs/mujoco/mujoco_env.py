@@ -7,10 +7,7 @@ from os import path
 import gym
 import six
 
-try:
-    import mujoco_py
-except ImportError as e:
-    raise error.DependencyNotInstalled("{}. (HINT: you need to install mujoco_py, and also perform the setup instructions here: https://github.com/openai/mujoco-py/.)".format(e))
+import mujoco
 
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
