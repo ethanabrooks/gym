@@ -30,6 +30,8 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
+        self.init_qpos = self.sim.qpos.ravel().copy()
+        self.init_qvel = self.sim.qvel.ravel().copy()
         if action_space is None:
             bounds = self.sim.actuator_ctrlrange.copy()
             low = bounds[:, 0]
@@ -39,8 +41,6 @@ class MujocoEnv(gym.Env):
             self.action_space = action_space
 
         if observation_space is None:
-            self.init_qpos = self.sim.qpos.ravel().copy()
-            self.init_qvel = self.sim.qvel.ravel().copy()
             observation, _reward, done, _info = self._step(np.zeros(self.sim.nu))
             assert not done
             self.obs_dim = observation.size
@@ -87,12 +87,13 @@ class MujocoEnv(gym.Env):
 
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
-        self.sim.qpos = qpos
-        self.sim.qvel = qvel
+        self.sim.qpos[:] = qpos
+        self.sim.qvel[:] = qvel
         self.sim.forward()
 
     @property
     def dt(self):
+        print(dir(self.sim))
         return self.sim.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
@@ -100,7 +101,7 @@ class MujocoEnv(gym.Env):
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, *args):
+    def _render(self, *args, **kwargs):
         self.sim.render()
 
     def _get_viewer(self):
