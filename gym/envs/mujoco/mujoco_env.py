@@ -22,9 +22,7 @@ class MujocoEnv(gym.Env):
         if not path.exists(fullpath):
             raise IOError("File %s does not exist" % fullpath)
         self.frame_skip = frame_skip
-        self.model = mujoco_py.load_model_from_path(fullpath)
-        self.sim = mujoco_py.MjSim(self.model)
-        self.data = self.sim.data
+        self.sim = mujoco.Sim(fullpath)
         self.viewer = None
 
         self.metadata = {
@@ -33,7 +31,7 @@ class MujocoEnv(gym.Env):
         }
 
         if action_space is None:
-            bounds = self.model.actuator_ctrlrange.copy()
+            bounds = self.sim.actuator_ctrlrange.copy()
             low = bounds[:, 0]
             high = bounds[:, 1]
             self.action_space = spaces.Box(low, high)
@@ -41,9 +39,9 @@ class MujocoEnv(gym.Env):
             self.action_space = action_space
 
         if observation_space is None:
-            self.init_qpos = self.sim.data.qpos.ravel().copy()
-            self.init_qvel = self.sim.data.qvel.ravel().copy()
-            observation, _reward, done, _info = self._step(np.zeros(self.model.nu))
+            self.init_qpos = self.sim.qpos.ravel().copy()
+            self.init_qvel = self.sim.qvel.ravel().copy()
+            observation, _reward, done, _info = self._step(np.zeros(self.sim.nu))
             assert not done
             self.obs_dim = observation.size
 
@@ -88,47 +86,31 @@ class MujocoEnv(gym.Env):
         return ob
 
     def set_state(self, qpos, qvel):
-        assert qpos.shape == (self.model.nq,) and qvel.shape == (self.model.nv,)
-        old_state = self.sim.get_state()
-        new_state = mujoco_py.MjSimState(old_state.time, qpos, qvel,
-                                         old_state.act, old_state.udd_state)
-        self.sim.set_state(new_state)
+        assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
+        self.sim.qpos = qpos
+        self.sim.qvel = qvel
         self.sim.forward()
 
     @property
     def dt(self):
-        return self.model.opt.timestep * self.frame_skip
+        return self.sim.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.sim.data.ctrl[:] = ctrl
+        self.sim.ctrl[:] = ctrl
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, mode='human', close=False):
-        if close:
-            if self.viewer is not None:
-                self._get_viewer()
-                self.viewer = None
-            return
-
-        if mode == 'rgb_array':
-            self._get_viewer().render()
-            data, width, height = self._get_viewer().get_image()
-            return np.fromstring(data, dtype='uint8').reshape(height, width, 3)[::-1, :, :]
-        elif mode == 'human':
-            self._get_viewer().render()
+    def _render(self, *args):
+        self.sim.render()
 
     def _get_viewer(self):
-        if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim)
-            self.viewer_setup()
-        return self.viewer
+        return self.sim
 
     def get_body_com(self, body_name):
-        return self.data.get_body_xpos(body_name)
+        return self.sims.get_xpos(mujoco.Types.BODY, body_name)
 
     def state_vector(self):
         return np.concatenate([
-            self.sim.data.qpos.flat,
-            self.sim.data.qvel.flat
+            self.sim.qpos.flat,
+            self.sim.qvel.flat
         ])
