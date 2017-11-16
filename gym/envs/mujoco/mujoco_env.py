@@ -93,7 +93,6 @@ class MujocoEnv(gym.Env):
 
     @property
     def dt(self):
-        print(dir(self.sim))
         return self.sim.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
