@@ -86,7 +86,8 @@ class MujocoEnv(gym.Env):
         return ob
 
     def set_state(self, qpos, qvel):
-        assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
+        assert qpos.shape == (self.sim.nq,), "{} != {}".format(qpos.shape, self.sim.nq)
+        assert qvel.shape == (self.sim.nv,), "{} != {}".format(qvel.shape, self.sim.nv)
         self.sim.qpos[:] = qpos
         self.sim.qvel[:] = qvel
         self.sim.forward()
