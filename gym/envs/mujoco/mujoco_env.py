@@ -25,7 +25,6 @@ class MujocoEnv(gym.Env):
         self.frame_skip = frame_skip
         self.sim = mujoco.Sim(fullpath)
         self.viewer = None
-        self.offscreen = offscreen
 
         self.metadata = {
             'render.modes': ['human', 'rgb_array'],
