@@ -30,8 +30,8 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        self.init_qpos = self.sim.qpos.ravel().copy()
-        self.init_qvel = self.sim.qvel.ravel().copy()
+        self.init_qpos = self.sim.joint_qpos.ravel().copy()
+        self.init_qvel = self.sim.joint_qvel.ravel().copy()
         if action_space is None:
             bounds = self.sim.actuator_ctrlrange.copy()
             low = bounds[:, 0]
@@ -87,8 +87,8 @@ class MujocoEnv(gym.Env):
 
     def set_state(self, qpos, qvel):
         assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
-        self.sim.qpos[:] = qpos
-        self.sim.qvel[:] = qvel
+        self.sim.joint_qpos[:] = qpos
+        self.sim.joint_qvel[:] = qvel
         self.sim.forward()
 
     @property
@@ -96,7 +96,7 @@ class MujocoEnv(gym.Env):
         return self.sim.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.sim.ctrl[:] = ctrl
+        self.sim.actuator_ctrl[:] = ctrl
         for _ in range(n_frames):
             self.sim.step()
 
@@ -111,6 +111,6 @@ class MujocoEnv(gym.Env):
 
     def state_vector(self):
         return np.concatenate([
-            self.sim.qpos.flat,
-            self.sim.qvel.flat
+            self.sim.joint_qpos.flat,
+            self.sim.joint_qvel.flat
         ])
