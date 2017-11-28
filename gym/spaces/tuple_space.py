@@ -1,5 +1,6 @@
 from gym import Space
 
+
 class Tuple(Space):
     """
     A tuple (i.e., product) of simpler spaces
@@ -7,6 +8,7 @@ class Tuple(Space):
     Example usage:
     self.observation_space = spaces.Tuple((spaces.Discrete(2), spaces.Discrete(3)))
     """
+
     def __init__(self, spaces):
         self.spaces = spaces
 
@@ -17,10 +19,10 @@ class Tuple(Space):
         if isinstance(x, list):
             x = tuple(x)  # Promote list to tuple for contains check
         return isinstance(x, tuple) and len(x) == len(self.spaces) and all(
-            space.contains(part) for (space,part) in zip(self.spaces,x))
+            space.contains(part) for (space, part) in zip(self.spaces, x))
 
     def __repr__(self):
-        return "Tuple(" + ", ". join([str(s) for s in self.spaces]) + ")"
+        return "Tuple(" + ", ".join([str(s) for s in self.spaces]) + ")"
 
     def to_jsonable(self, sample_n):
         # serialize as list-repr of tuple of vectors

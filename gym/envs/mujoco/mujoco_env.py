@@ -7,23 +7,14 @@ from os import path
 import gym
 # import six
 
-try:
-    import mujoco_py
-except ImportError as e:
-    raise error.DependencyNotInstalled("{}. (HINT: you need to install \
-            mujoco_py, and also perform the setup instructions here: \
-            https://github.com/openai/mujoco-py/.)".format(e))
-
-DEFAULT_WIDTH = 255
-DEFAULT_HEIGHT = 255
-
+import mujoco
 
 class MujocoEnv(gym.Env):
     """Superclass for all MuJoCo environments.
     """
 
-    def __init__(self, model_path, frame_skip,
-                 action_space=None, observation_space=None, offscreen=False):
+    def __init__(self, model_path, frame_skip, action_space=None,
+            observation_space=None):
         if model_path.startswith("/"):
             fullpath = model_path
         else:
@@ -32,9 +23,7 @@ class MujocoEnv(gym.Env):
         if not path.exists(fullpath):
             raise IOError("File %s does not exist" % fullpath)
         self.frame_skip = frame_skip
-        self.model = mujoco_py.load_model_from_path(fullpath)
-        self.sim = mujoco_py.MjSim(self.model)
-        self.data = self.sim.data
+        self.sim = mujoco.Sim(fullpath)
         self.viewer = None
         self.offscreen = offscreen
 
@@ -43,11 +32,10 @@ class MujocoEnv(gym.Env):
             'video.frames_per_second': int(np.round(1.0 / self.dt))
         }
 
-        self.init_qpos = self.sim.data.qpos.ravel().copy()
-        self.init_qvel = self.sim.data.qvel.ravel().copy()
-
+        self.init_qpos = self.sim.joint_qpos.ravel().copy()
+        self.init_qvel = self.sim.joint_qvel.ravel().copy()
         if action_space is None:
-            bounds = self.model.actuator_ctrlrange.copy()
+            bounds = self.sim.actuator_ctrlrange.copy()
             low = bounds[:, 0]
             high = bounds[:, 1]
             self.action_space = spaces.Box(low, high)
@@ -55,15 +43,16 @@ class MujocoEnv(gym.Env):
             self.action_space = action_space
 
         if observation_space is None:
-            action = self.action_space.sample()
-            observation, _reward, done, _info = self._step(action)
+            observation, _reward, done, _info = self._step(np.zeros(self.sim.nu))
             assert not done
             self.obs_dim = observation.size
-            high = np.inf * np.ones(self.obs_dim)
+
+            high = np.inf*np.ones(self.obs_dim)
             low = -high
             self.observation_space = spaces.Box(low, high)
         else:
             self.observation_space = observation_space
+            
 
         self._seed()
 
@@ -99,46 +88,31 @@ class MujocoEnv(gym.Env):
         return ob
 
     def set_state(self, qpos, qvel):
-        assert qpos.shape == (self.model.nq,) \
-            and qvel.shape == (self.model.nv,)
-        current = self.sim.get_state()
-        new_state = mujoco_py.MjSimState(current.time, qpos, qvel,
-                                         current.act, current.udd_state)
-        self.sim.set_state(new_state)
-
-        # TODO: what are these all about?
-        # self.model._compute_subtree()  # pylint: disable=W0212
-        # self.model.forward()
+        assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
+        self.sim.joint_qpos[:] = qpos
+        self.sim.joint_qvel[:] = qvel
+        self.sim.forward()
 
     @property
     def dt(self):
-        return self.model.opt.timestep * self.frame_skip
+        return self.sim.timestep * self.frame_skip
 
     def do_simulation(self, ctrl, n_frames):
-        self.sim.data.ctrl[:] = ctrl
+        self.sim.actuator_ctrl[:] = ctrl
         for _ in range(n_frames):
             self.sim.step()
 
-    def _render(self, mode='human', close=False):
-        if close:
-            if self.viewer is not None:
-                self._get_viewer()  # .finish()
-                self.viewer = None
-            return
-
-        if mode == 'rgb_array':
-            raise RuntimeError('Use `sim.render`')
-        elif mode == 'human':
-            self._get_viewer().render()
+    def _render(self, *args, **kwargs):
+        self.sim.render()
 
     def _get_viewer(self):
-        if self.viewer is None:
-            self.viewer = mujoco_py.MjViewer(self.sim, offscreen=self.offscreen)
-            self.viewer_setup()
-        return self.viewer
+        return self.sim
+
+    def get_body_com(self, body_name):
+        return self.sims.get_xpos(mujoco.Types.BODY, body_name)
 
     def state_vector(self):
         return np.concatenate([
-            self.sim.data.qpos.flat,
-            self.sim.data.qvel.flat
+            self.sim.joint_qpos.flat,
+            self.sim.joint_qvel.flat
         ])

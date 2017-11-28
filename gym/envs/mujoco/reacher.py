@@ -33,11 +33,11 @@ class ReacherEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         return self._get_obs()
 
     def _get_obs(self):
-        theta = self.data.qpos.flat[:2]
+        theta = self.sim.data.qpos.flat[:2]
         return np.concatenate([
             np.cos(theta),
             np.sin(theta),
-            self.data.qpos.flat[2:],
-            self.data.qvel.flat[:2],
-            self.data.get_body_xpos("fingertip") - self.data.get_body_xpos("target")
+            self.sim.data.qpos.flat[2:],
+            self.sim.data.qvel.flat[:2],
+            self.get_body_com("fingertip") - self.get_body_com("target")
         ])
