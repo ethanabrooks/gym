@@ -34,7 +34,7 @@ class MujocoEnv(gym.Env):
         self.init_qpos = self.sim.joint_qpos.ravel().copy()
         self.init_qvel = self.sim.joint_qvel.ravel().copy()
         if action_space is None:
-            bounds = self.sim.actuator_ctrlrange.copy()
+            bounds = self.sim.actuator_ctrlrange.copy().reshape(-1, 2)
             low = bounds[:, 0]
             high = bounds[:, 1]
             self.action_space = spaces.Box(low, high)
